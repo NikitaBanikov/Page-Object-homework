@@ -1,96 +1,85 @@
 import { test, expect } from '@playwright/test';
+import { LoginPage } from '../src/pages/loginPage';
+import { EditorPage } from '../src/pages/editorPage';
+import { ArticlePage } from '../src/pages/articlePage';
+import { MainPage } from '../src/pages/mainPage';
 
 test.describe('Тесты с авторизацией', () => {
+  let loginPage;
+  let editorPage;
+  let articlePage;
+  let mainPage;
+  let articleSlug = '';
+  let commentText = '';
+
   test.beforeEach(async ({ page }) => {
-    // Логинимся перед каждым тестом
-    await page.goto('https://realworld.qa.guru/#/login');
+    // Инициация Page Objects
+    loginPage = new LoginPage(page);
+    editorPage = new EditorPage(page);
+    articlePage = new ArticlePage(page);
+    mainPage = new MainPage(page);
+
+    // Логинимся
+    await loginPage.goto();
+    await loginPage.login('nikitabannikov@bk.ru', 'Seven777');
+  });
+
+  test.beforeEach(async ({ page }) => {
+    // Создаем новую статью
+    await editorPage.goto();
     
-    await page.locator('[placeholder="Email"]').click();
-    await page.locator('[placeholder="Email"]').fill('nikitabannikov@bk.ru');
-
-    await page.locator('[placeholder="Password"]').click();
-    await page.locator('[placeholder="Password"]').fill('Seven777');
-
-    await page.locator('button:has-text("Login")').click();
-
-    await page.waitForURL('https://realworld.qa.guru/#/');
+    const timestamp = Date.now();
+    const testTitle = `Тестовая статья ${timestamp}`;
+    
+    articleSlug = await editorPage.createArticle(
+      testTitle,
+      `Описание ${timestamp}`,
+      `Содержание ${timestamp}`,
+      `тег${timestamp}`
+    );
   });
 
   test('Создание статьи', async ({ page }) => {
-    await page.goto('https://realworld.qa.guru/#/editor');
-
-    await page.locator('[placeholder="Article Title"]').click();
-    await page.locator('[placeholder="Article Title"]').fill('Название строки фр7');
-
-    await page.locator(`[placeholder="What's this article about?"]`).click();
-    await page.locator(`[placeholder="What's this article about?"]`).fill('Описание статьи фр7');
-
-    await page.locator('[placeholder="Write your article (in markdown)"]').click();
-    await page.locator('[placeholder="Write your article (in markdown)"]').fill('Содержание статьи фр7');
-
-    await page.locator('[placeholder="Enter tags"]').click();
-    await page.locator('[placeholder="Enter tags"]').fill('статьяфр7');
-
-    await page.locator('button:has-text("Publish Article")').click();
-
-    await expect(page.getByText('Содержание статьи фр7')).toBeVisible();
+    // Этот тест теперь использует статью, созданную в beforeEach
+    await expect(page.getByText('Содержание')).toBeVisible();
   });
 
   test('Редактирование статьи', async ({ page }) => {
-    await page.goto('https://realworld.qa.guru/#/article/------------------7');
-
-    await page.locator('button:has-text("Edit Article")').first().click();
-
-    await page.locator('[placeholder="Article Title"]').click();
-    await page.locator('[placeholder="Article Title"]').fill('Я люблю рыбок!');
-
-    await page.locator(`[placeholder="What's this article about?"]`).click();
-    await page.locator(`[placeholder="What's this article about?"]`).fill('Статья про то как я люблю рыбок');
-
-    await page.locator('[placeholder="Write your article (in markdown)"]').click();
-    await page.locator('[placeholder="Write your article (in markdown)"]').fill('Я очень сильно люблю рыбок!');
-
-    await page.locator('[placeholder="Enter tags"]').click();
-    await page.locator('[placeholder="Enter tags"]').fill('рыбки');
-
-    await page.locator('button:has-text("Update Article")').click();
+    await articlePage.goto(articleSlug);
+    await articlePage.editArticle();
+    
+    // Используем метод updateArticle вместо прямого клика
+    await editorPage.updateArticle('Обновленное название');
+    
+    await expect(page.getByText('Обновленное название')).toBeVisible();
   });
 
-  test('Добавить комментарий', async ({ page }) => {
-    await page.goto('https://realworld.qa.guru/#/article/--------------');
-
-    await page.locator('[placeholder="Write a comment..."]').click();
-    await page.locator('[placeholder="Write a comment..."]').fill('А мне больше нравятся бабочки!');
-
-    await page.locator('button:has-text("Post Comment")').click();
-
-    await expect(page.locator('.card-block').last().getByText('А мне больше нравятся бабочки!')).toBeVisible();
+  test('Добавить и удалить комментарий', async ({ page }) => {
+    await articlePage.goto(articleSlug);
+    
+    commentText = `Тестовый комментарий ${Date.now()}`;
+    
+    await articlePage.addComment(commentText);
+    await expect(page.getByText(commentText)).toBeVisible();
+    
+    await articlePage.deleteComment(commentText);
+    
+    const commentCard = await articlePage.getCommentCard(commentText);
+    await expect(commentCard).not.toBeVisible();
   });
 
-  test('Удалить комментарий', async ({ page }) => {
-    await page.goto('https://realworld.qa.guru/#/article/--------------');
-
-    // Регистрируем обработчик до клика
-    page.once('dialog', dialog => {
-      console.log(`Dialog message: ${dialog.message()}`);
-      dialog.accept();
-    });
-
-    // Удаляем комментарий
-    await page.locator('button.btn-outline-secondary').first().click();
-
-    // Проверяем, что комментарий исчез
-    await expect(page.locator('.card-block').first()).not.toBeVisible();
+  test('Удалить статью', async ({ page }) => {
+    await articlePage.goto(articleSlug);
+    await articlePage.deleteArticle();
+    
+    await expect(page).toHaveURL('https://realworld.qa.guru/#/');
   });
 
-  test('test', async ({ page }) => {
-    await page.goto('https://realworld.qa.guru/#/article/--------------');
-
-    page.once('dialog', dialog => {
-      console.log(`Dialog message: ${dialog.message()}`);
-      dialog.dismiss().catch(() => {});
-    });
-
-    await page.locator('button:has-text(" Delete Article")').first().click();
+  test('Поставить лайк', async ({ page }) => {
+    await mainPage.goto();
+    await mainPage.clickGlobalFeed();
+    
+    const counter = await mainPage.likeFirstArticle();
+    await expect(counter).toHaveText(' ( 1 )');
   });
 });
