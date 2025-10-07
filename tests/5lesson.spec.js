@@ -13,7 +13,7 @@ test.describe('Тесты с авторизацией', () => {
   let commentText = '';
 
   test.beforeEach(async ({ page }) => {
-    // Инициация Page Objects
+    // Инициация Page Object
     loginPage = new LoginPage(page);
     editorPage = new EditorPage(page);
     articlePage = new ArticlePage(page);
