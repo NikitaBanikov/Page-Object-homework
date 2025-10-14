@@ -1,5 +1,4 @@
 export class EditorPage {
-
   constructor(page) {
     this.page = page;
     this.titleInput = page.locator('[placeholder="Article Title"]');
@@ -8,6 +7,7 @@ export class EditorPage {
     this.tagsInput = page.locator('[placeholder="Enter tags"]');
     this.publishButton = page.locator('button:has-text("Publish Article")');
     this.updateButton = page.locator('button:has-text("Update Article")');
+    this.contentText = page.getByText('Содержание');
   }
 
   async goto() {
@@ -22,12 +22,14 @@ export class EditorPage {
     await this.publishButton.click();
     await this.page.waitForURL(/\/article\//);
     
-    return this.page.url().split('/article/')[1]; // возвращаем slug
+    return this.page.url().split('/article/')[1];
   }
 
   async updateArticle(newTitle) {
+    await this.titleInput.waitFor();
     await this.titleInput.fill(newTitle);
+    await this.updateButton.waitFor();
     await this.updateButton.click();
+    await this.page.waitForURL(/\/article\//);
   }
-
 }

@@ -1,5 +1,4 @@
 export class LoginPage {
-
   constructor(page) {
     this.page = page;
     this.emailInput = page.locator('[placeholder="Email"]');
@@ -17,5 +16,4 @@ export class LoginPage {
     await this.loginButton.click();
     await this.page.waitForURL('https://realworld.qa.guru/#/');
   }
-  
 }

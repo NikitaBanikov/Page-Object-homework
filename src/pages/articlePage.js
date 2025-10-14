@@ -1,5 +1,4 @@
 export class ArticlePage {
-
   constructor(page) {
     this.page = page;
     this.articleTitle = page.locator('.container h1');
@@ -7,6 +6,7 @@ export class ArticlePage {
     this.deleteArticleButton = page.locator('button:has-text("Delete Article")').first();
     this.commentInput = page.locator('[placeholder="Write a comment..."]');
     this.postCommentButton = page.locator('button:has-text("Post Comment")');
+    this.updatedTitle = page.getByText('Обновленное название');
   }
 
   async goto(slug) {
@@ -40,5 +40,4 @@ export class ArticlePage {
     await this.deleteArticleButton.click();
     await this.page.waitForURL('https://realworld.qa.guru/#/');
   }
-  
 }

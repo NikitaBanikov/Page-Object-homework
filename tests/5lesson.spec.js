@@ -11,9 +11,10 @@ test.describe('Тесты с авторизацией', () => {
   let mainPage;
   let articleSlug = '';
   let commentText = '';
+  let testTitle = '';
 
   test.beforeEach(async ({ page }) => {
-    // Инициация Page Objects
+    // Инициализируем Page Objects
     loginPage = new LoginPage(page);
     editorPage = new EditorPage(page);
     articlePage = new ArticlePage(page);
@@ -22,14 +23,12 @@ test.describe('Тесты с авторизацией', () => {
     // Логинимся
     await loginPage.goto();
     await loginPage.login('nikitabannikov@bk.ru', 'Seven777');
-  });
 
-  test.beforeEach(async ({ page }) => {
     // Создаем новую статью
     await editorPage.goto();
     
     const timestamp = Date.now();
-    const testTitle = `Тестовая статья ${timestamp}`;
+    testTitle = `Тестовая статья ${timestamp}`;
     
     articleSlug = await editorPage.createArticle(
       testTitle,
@@ -40,18 +39,28 @@ test.describe('Тесты с авторизацией', () => {
   });
 
   test('Создание статьи', async ({ page }) => {
-    // Этот тест теперь использует статью, созданную в beforeEach
-    await expect(page.getByText('Содержание')).toBeVisible();
+    await editorPage.goto();
+    
+    const timestamp = Date.now();
+    const uniqueTitle = `Новая статья ${timestamp}`;
+    
+    await editorPage.createArticle(
+      uniqueTitle,
+      `Описание новой статьи ${timestamp}`,
+      `Содержание новой статьи ${timestamp}`,
+      `новыйтег${timestamp}`
+    );
+
+    await expect(editorPage.contentText).toBeVisible();
   });
 
   test('Редактирование статьи', async ({ page }) => {
     await articlePage.goto(articleSlug);
     await articlePage.editArticle();
     
-    // Используем метод updateArticle вместо прямого клика
     await editorPage.updateArticle('Обновленное название');
     
-    await expect(page.getByText('Обновленное название')).toBeVisible();
+    await expect(articlePage.updatedTitle).toBeVisible();
   });
 
   test('Добавить и удалить комментарий', async ({ page }) => {
@@ -72,7 +81,9 @@ test.describe('Тесты с авторизацией', () => {
     await articlePage.goto(articleSlug);
     await articlePage.deleteArticle();
     
-    await expect(page).toHaveURL('https://realworld.qa.guru/#/');
+    await mainPage.clickGlobalFeed();
+    const isArticleVisible = await mainPage.isArticleVisible(testTitle);
+    await expect(isArticleVisible).toBe(false);
   });
 
   test('Поставить лайк', async ({ page }) => {
